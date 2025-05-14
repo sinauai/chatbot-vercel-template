@@ -1,0 +1,41 @@
+# Chatbot Berita Kompas.id
+
+Chatbot yang menjawab pertanyaan berdasarkan berita di Kompas.id.
+
+## Cara Mengubah Konten Berita
+
+Untuk mengubah konten berita yang digunakan oleh chatbot, Anda perlu mengedit file `news.json` di root project. File ini berisi array artikel berita dengan format berikut:
+
+\`\`\`json
+[
+  {
+    "url": "URL artikel",
+    "published_at": 45786, // Timestamp publikasi
+    "title": "Judul artikel",
+    "full_text": "Teks lengkap artikel"
+  },
+  // Artikel lainnya...
+]
+\`\`\`
+
+Setiap artikel harus memiliki properti berikut:
+- `url`: URL artikel asli
+- `published_at`: Timestamp publikasi (opsional)
+- `title`: Judul artikel
+- `full_text`: Teks lengkap artikel
+
+Setelah mengubah file `news.json`, contoh pertanyaan akan otomatis diperbarui berdasarkan konten baru saat aplikasi dimulai ulang.
+
+## Cara Menggunakan Embed
+
+Untuk menyematkan chatbot di website lain, gunakan kode iframe berikut:
+
+```html
+<iframe 
+  src="https://chatbot-contoh.vercel.app/?embed=true" 
+  width="100%" 
+  height="600" 
+  style="border: 1px solid #ddd; border-radius: 8px;" 
+  allow="clipboard-write"
+></iframe>
+
