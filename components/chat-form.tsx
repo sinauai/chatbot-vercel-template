@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect, Suspense } from "react"
+import { useState, useEffect, Suspense, useRef } from "react"
 import { cn } from "@/lib/utils"
 import { useChat } from "ai/react"
 import { ArrowUpIcon, Loader2 } from "lucide-react"
@@ -61,6 +61,34 @@ function ChatFormContent({ className, ...props }: React.ComponentProps<"form">) 
   const [processedMessages, setProcessedMessages] = useState<typeof originalMessages>([])
   const [newsData, setNewsData] = useState<any[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
+  const chatContainerRef = useRef<HTMLDivElement>(null)
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true)
+
+  // Deteksi posisi scroll sebelum pesan baru masuk
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollPosition = window.innerHeight + window.scrollY
+      const threshold = document.body.offsetHeight - 100 // 100px dari bawah
+      setShouldAutoScroll(scrollPosition >= threshold)
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  // Auto-scroll ke bawah hanya jika user memang di bawah dan pesan terakhir adalah dari user
+  useEffect(() => {
+    const lastMessage = processedMessages[processedMessages.length - 1]
+    if (
+      shouldAutoScroll &&
+      processedMessages.length > 0 &&
+      lastMessage?.role === "user"
+    ) {
+      setTimeout(() => {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
+      }, 100)
+    }
+    // Tidak ada auto-scroll jika pesan terakhir dari asisten (chatbot sedang mengetik)
+  }, [processedMessages, shouldAutoScroll])
 
   useEffect(() => {
     // Fetch news metadata for source references
@@ -189,11 +217,12 @@ function ChatFormContent({ className, ...props }: React.ComponentProps<"form">) 
     <header className="m-auto flex max-w-96 flex-col gap-5 text-center py-8">
       <h1 className="text-2xl font-semibold leading-none tracking-tight">Halo, Sahabat Kompas</h1>
       <p className="text-muted-foreground text-sm">
-        Silakan ajukan pertanyaan terkait artikel yang Anda baca. Jawaban dibuat berdasarkan berita di Kompas.id.{" "}
+        Silakan ajukan pertanyaan terkait artikel yang Anda baca. Jawaban dibuat berdasarkan berita di Kompas.id.
       </p>
     </header>
   )
 
+  // Pastikan messageList didefinisikan sebelum return
   const messageList = (
     <div className="my-4 flex h-fit min-h-full flex-col gap-4">
       {processedMessages.map((message, index) => (
@@ -203,16 +232,15 @@ function ChatFormContent({ className, ...props }: React.ComponentProps<"form">) 
             className="max-w-[80%] rounded-xl px-3 py-2 text-sm data-[role=assistant]:self-start data-[role=user]:self-end data-[role=assistant]:bg-gray-100 data-[role=user]:bg-blue-500 data-[role=assistant]:text-black data-[role=user]:text-white"
           >
             {message.role === "assistant" ? (
-  <div className="prose prose-sm max-w-none [&>p]:mb-4 [&>ul]:space-y-2 [&>ol]:space-y-2">
-    <ReactMarkdown>
-      {message.content}
-    </ReactMarkdown>
-  </div>
+              <div className="prose prose-sm max-w-none [&>p]:mb-4 [&>ul]:space-y-2 [&>ol]:space-y-2">
+                <ReactMarkdown>
+                  {message.content}
+                </ReactMarkdown>
+              </div>
             ) : (
               message.content
             )}
           </div>
-
           {/* Sources section */}
           {message.role === "assistant" && messageSources[message.id] && messageSources[message.id].length > 0 && (
             <div className="mt-1 self-start text-xs text-gray-500">
@@ -235,7 +263,6 @@ function ChatFormContent({ className, ...props }: React.ComponentProps<"form">) 
           )}
         </div>
       ))}
-
       {/* Loading animation - hanya muncul saat memproses, bukan saat mengetik */}
       {isProcessing && (
         <div className="self-start rounded-xl bg-gray-100 px-3 py-2 text-sm">
@@ -251,19 +278,18 @@ function ChatFormContent({ className, ...props }: React.ComponentProps<"form">) 
   return (
     <main
       className={cn(
-        "ring-none mx-auto flex w-full max-w-[35rem] flex-col items-stretch border border-gray-200 rounded-lg shadow-md bg-white",
-        isEmbedMode ? "h-full" : "h-svh max-h-svh",
+        "min-h-screen flex flex-col items-center w-full max-w-[35rem] border border-gray-200 rounded-lg shadow-md bg-white mx-auto",
+        isEmbedMode ? "h-full" : "",
         className,
       )}
       {...props}
     >
-      <div className="flex-1 content-center overflow-y-auto px-6">
-        {processedMessages.length ? messageList : welcomeHeader}
+      <div className="flex-1 w-full px-6 flex flex-col" ref={chatContainerRef}>
+        {processedMessages.length === 0 ? welcomeHeader : messageList}
       </div>
-
       <form
         onSubmit={handleSubmit}
-        className="border-input bg-background focus-within:ring-ring/10 relative mx-6 mb-6 flex items-center rounded-[16px] border px-3 py-1.5 pr-8 text-sm focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-0"
+        className="border-input bg-background focus-within:ring-ring/10 relative mb-6 flex items-center rounded-[16px] border px-3 py-1.5 pr-8 text-sm focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-0 w-full max-w-[90%] mx-auto"
       >
         <AutoResizeTextarea
           onKeyDown={handleKeyDown}
@@ -289,10 +315,9 @@ function ChatFormContent({ className, ...props }: React.ComponentProps<"form">) 
           </Tooltip>
         </TooltipProvider>
       </form>
-
       {/* Footer - hide in embed mode if needed */}
       {!isEmbedMode && (
-        <footer className="border-t border-gray-200 py-3 text-center text-xs text-gray-500">
+        <footer className="border-t border-gray-200 py-3 text-center text-xs text-gray-500 w-full">
           Chatbot bisa salah, cek kembali dengan membaca laporan{" "}
           <Link
             href="https://www.kompas.id/"
