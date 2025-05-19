@@ -63,6 +63,7 @@ function ChatFormContent({ className, ...props }: React.ComponentProps<"form">) 
   const [isProcessing, setIsProcessing] = useState(false)
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true)
+  const [showExamples, setShowExamples] = useState(true)
 
   // Deteksi posisi scroll sebelum pesan baru masuk
   useEffect(() => {
@@ -213,6 +214,16 @@ function ChatFormContent({ className, ...props }: React.ComponentProps<"form">) 
     }
   }
 
+  const handleExampleSelect = (question: string) => {
+    setInput(question)
+    setShowExamples(false)
+    // Simulasikan submit otomatis
+    setTimeout(() => {
+      const form = document.getElementById('chat-form-main') as HTMLFormElement | null
+      if (form) form.requestSubmit()
+    }, 0)
+  }
+
   const welcomeHeader = (
     <header className="m-auto flex max-w-96 flex-col gap-5 text-center py-8">
       <h1 className="text-2xl font-semibold leading-none tracking-tight">Halo, Sahabat Kompas</h1>
@@ -275,6 +286,33 @@ function ChatFormContent({ className, ...props }: React.ComponentProps<"form">) 
     </div>
   )
 
+  function ExampleQuestions({ onSelect }: { onSelect: (q: string) => void }) {
+    const [questions, setQuestions] = useState<string[]>([]);
+
+    useEffect(() => {
+      fetch('/api/questions')
+        .then(res => res.json())
+        .then(data => setQuestions(data.questions || []));
+    }, []);
+
+    if (questions.length === 0) return null;
+
+    return (
+      <div className="flex flex-col gap-2 mb-6">
+        {questions.map((q, idx) => (
+          <button
+            key={idx}
+            className="border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-900 rounded-lg px-4 py-2 text-left transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-300 text-[0.97rem]"
+            onClick={() => onSelect(q)}
+            type="button"
+          >
+            {q}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <main
       className={cn(
@@ -285,9 +323,15 @@ function ChatFormContent({ className, ...props }: React.ComponentProps<"form">) 
       {...props}
     >
       <div className="flex-1 w-full px-6 flex flex-col" ref={chatContainerRef}>
-        {processedMessages.length === 0 ? welcomeHeader : messageList}
+        {processedMessages.length === 0 ? (
+          <>
+            {welcomeHeader}
+            {showExamples && <ExampleQuestions onSelect={handleExampleSelect} />}
+          </>
+        ) : messageList}
       </div>
       <form
+        id="chat-form-main"
         onSubmit={handleSubmit}
         className="border-input bg-background focus-within:ring-ring/10 relative mb-6 flex items-center rounded-[16px] border px-3 py-1.5 pr-8 text-sm focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-0 w-full max-w-[90%] mx-auto"
       >
